@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import com.taskforge.backend.dto.task.TaskRequest;
 import com.taskforge.backend.model.Task;
 import com.taskforge.backend.service.task.TaskService;
-
+import org.springframework.data.domain.Page;
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskController {
@@ -34,17 +34,26 @@ public class TaskController {
     }
 
     // GET ALL TASKS
-    @GetMapping
-    public ResponseEntity<List<Task>> getUserTasks(
-            Principal principal
-    ) {
+   @GetMapping
+public ResponseEntity<Page<Task>> getUserTasks(
 
-        return ResponseEntity.ok(
-                taskService.getUserTasks(
-                        principal.getName()
-                )
-        );
-    }
+        @RequestParam(defaultValue = "0")
+        int page,
+
+        @RequestParam(defaultValue = "10")
+        int size,
+
+        Principal principal
+) {
+
+    return ResponseEntity.ok(
+            taskService.getUserTasks(
+                    principal.getName(),
+                    page,
+                    size
+            )
+    );
+}
 
     // GET SINGLE TASK
     @GetMapping("/{id}")

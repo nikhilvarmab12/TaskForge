@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { signup } from "../services/authService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
 function Signup() {
 
@@ -28,54 +29,117 @@ function Signup() {
 
       await signup(formData);
 
-      alert("Signup successful");
-
       navigate("/login");
 
-    } catch{
+    } catch {
 
-      alert("Signup failed");
+      alert("Signup Failed");
     }
   };
 
   return (
-    <div>
-      <h2>Signup</h2>
 
-      <form onSubmit={handleSubmit}>
+    <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden relative">
 
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          onChange={handleChange}
-        />
+      <div className="absolute w-96 h-96 bg-purple-500/30 blur-3xl rounded-full top-0 left-0" />
+      <div className="absolute w-96 h-96 bg-pink-500/30 blur-3xl rounded-full bottom-0 right-0" />
 
-        <br />
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 50,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        className="
+          w-full
+          max-w-md
+          p-8
+          bg-white/10
+          backdrop-blur-xl
+          border
+          border-white/20
+          rounded-3xl
+          shadow-2xl
+          z-10
+        "
+      >
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          onChange={handleChange}
-        />
+        <h1 className="text-4xl font-bold text-center text-white mb-2">
+          Join TaskForge
+        </h1>
 
-        <br />
+        <p className="text-center text-gray-300 mb-8">
+          Create your account
+        </p>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-        />
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
 
-        <br />
+          <input
+            type="text"
+            name="name"
+            placeholder="Full Name"
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-white/10 border border-white/20 text-white"
+          />
 
-        <button type="submit">
-          Signup
-        </button>
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-white/10 border border-white/20 text-white"
+          />
 
-      </form>
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            onChange={handleChange}
+            className="w-full p-4 rounded-xl bg-white/10 border border-white/20 text-white"
+          />
+
+          <button
+            type="submit"
+            className="
+              w-full
+              py-4
+              rounded-xl
+              font-bold
+              text-white
+              bg-gradient-to-r
+              from-purple-500
+              via-pink-500
+              to-orange-500
+              hover:scale-105
+              transition-all
+            "
+          >
+            Create Account
+          </button>
+
+        </form>
+
+        <p className="text-center text-gray-300 mt-6">
+
+          Already have an account?
+
+          <Link
+            to="/login"
+            className="text-pink-400 ml-2"
+          >
+            Login
+          </Link>
+
+        </p>
+
+      </motion.div>
+
     </div>
   );
 }

@@ -9,13 +9,19 @@ const getToken = () => {
 };
 
 // GET TASKS
-export const getTasks = async () => {
+export const getTasks = async (
+  page = 0,
+  size = 10
+) => {
 
-  const response = await axios.get(API_URL, {
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-    },
-  });
+  const response = await axios.get(
+    `${API_URL}?page=${page}&size=${size}`,
+    {
+      headers: {
+        Authorization: `Bearer ${getToken()}`
+      }
+    }
+  );
 
   return response.data;
 };

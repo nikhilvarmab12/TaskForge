@@ -1,1301 +1,1465 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { motion } from "framer-motion";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-} from "@hello-pangea/dnd";
+﻿import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
   getTasks,
   createTask,
   deleteTask,
   updateTask,
 } from "../services/taskService";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
 
 function Dashboard() {
-
   const navigate = useNavigate();
 
-  // STATES
-
   const [tasks, setTasks] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
-  const [editingTaskId, setEditingTaskId] = useState(null);
-
+  const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(
+  window.innerWidth >= 1024
+);
+  const [userName, setUserName] = useState("User");
+  const [userEmail, setUserEmail] = useState("user@example.com");
 
-  const [statusFilter, setStatusFilter] = useState("ALL");
 
-  const [priorityFilter, setPriorityFilter] = useState("ALL");
-
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem("theme") === "dark"
-  );
-
-  const [viewMode, setViewMode] = useState("grid");
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    status: "TODO",
-    priority: "LOW",
+    priority: "MEDIUM",
+    status: "PENDING",
     dueDate: "",
   });
 
-  // LOAD TASKS
-
- const fetchTasks = async () => {
-
-  try {
-
-    setLoading(true);
-
-    const data = await getTasks();
-
-    setTasks(data);
-
-  } catch (error) {
-
-    console.log(error);
-
-    toast.error("Failed to load tasks");
-
-  } finally {
-
-    setLoading(false);
-  }
-};
-  // INITIAL LOAD
+  const loadTasks = async () => {
+    try {
+      const data = await getTasks(0, 50);
+      setTasks(data.content || []);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      await fetchTasks();
-    })();
+    loadTasks();
+    const storedName = localStorage.getItem("userName") || "User";
+    const storedEmail = localStorage.getItem("userEmail") || "user@example.com";
+    setUserName(storedName);
+    setUserEmail(storedEmail);
   }, []);
 
-  // DARK MODE
+  const totalTasks = tasks.length;
 
-  useEffect(() => {
+  const completedTasks = tasks.filter(
+    (task) => task.status === "COMPLETED"
+  ).length;
 
-    if (darkMode) {
+  const pendingTasks = tasks.filter(
+    (task) => task.status === "PENDING"
+  ).length;
+const isOverdue = (dueDate) => {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date();
+  };
+  const overdueTasks = tasks.filter(
+    (task) => task.status !== "COMPLETED" && task.dueDate && isOverdue(task.dueDate)
+  );
 
-      document.documentElement.classList.add("dark");
+  const completionPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-      localStorage.setItem("theme", "dark");
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    } else {
+  const overdueFilteredTasks = filteredTasks.filter(
+    (task) => task.status !== "COMPLETED" && task.dueDate && isOverdue(task.dueDate)
+  );
 
-      document.documentElement.classList.remove("dark");
+  const pendingFilteredTasks = filteredTasks.filter(
+    (task) => task.status === "PENDING" && (!task.dueDate || !isOverdue(task.dueDate))
+  );
 
-      localStorage.setItem("theme", "light");
-    }
+  const completedFilteredTasks = filteredTasks.filter(
+    (task) => task.status === "COMPLETED"
+  );
 
-  }, [darkMode]);
+  
 
-  // HANDLE INPUTS
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const getCurrentDate = () => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date().toLocaleDateString('en-US', options);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    navigate("/login");
+  };
 
   const handleChange = (e) => {
-
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  // CREATE OR UPDATE TASK
-
   const handleCreateTask = async (e) => {
-
     e.preventDefault();
 
     try {
-
-      if (editingTaskId) {
-
-        await updateTask(editingTaskId, formData);
-
-        setEditingTaskId(null);
-
-      } else {
-
-        await createTask(formData);
-      }
-
-      fetchTasks();
-      toast.success(
-  editingTaskId
-    ? "Task updated successfully"
-    : "Task created successfully"
-);
+      await createTask(formData);
 
       setFormData({
         title: "",
         description: "",
-        status: "TODO",
-        priority: "LOW",
+        priority: "MEDIUM",
+        status: "PENDING",
         dueDate: "",
       });
 
+      setShowModal(false);
+      loadTasks();
     } catch (error) {
-
-      console.log(error);
-
-      toast.error("Operation failed");
+      console.error(error);
     }
   };
 
-  // DELETE TASK
-
-  const handleDelete = async (id) => {
-
-    try {
-
-      await deleteTask(id);
-
-      fetchTasks();
-      toast.success("Task deleted successfully");
-
-    } catch (error) {
-
-      console.log(error);
-
-      toast.error("Failed to delete task");
-    }
-  };
-
-  // EDIT TASK
-  const handleToggleComplete = async (task) => {
-
-  try {
-
-    const updatedTask = {
-      ...task,
-      status:
-        task.status === "DONE"
-          ? "TODO"
-          : "DONE",
-    };
-
-    await updateTask(task.id, updatedTask);
-
-    fetchTasks();
-
-    toast.success(
-      task.status === "DONE"
-        ? "Task marked as pending"
-        : "Task completed"
-    );
-
-  } catch (error) {
-
-    console.log(error);
-
-    toast.error("Failed to update task");
-  }
-};
-  const handleEdit = (task) => {
-
-    setEditingTaskId(task.id);
-
-    setFormData({
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      priority: task.priority,
-      dueDate: task.dueDate,
-    });
-  };
-
-  // LOGOUT
-
-  const handleLogout = () => {
-
-    localStorage.removeItem("token");
-
-    navigate("/login");
-  };
-
-  // STATS
-
-  const totalTasks = tasks.length;
-
-  const completedTasks = tasks.filter(
-    (task) => task.status === "DONE"
-  ).length;
-
-  const completionPercentage =
-  totalTasks === 0
-    ? 0
-    : Math.round(
-        (completedTasks / totalTasks) * 100
-      );
-
-
-  const pendingTasks = tasks.filter(
-    (task) => task.status !== "DONE"
-  ).length;
-
-  const highPriorityTasks = tasks.filter(
-    (task) => task.priority === "HIGH"
-  ).length;
-
-  // ANALYTICS DATA
-
- 
-
-const statusData =
-  tasks.length === 0
-    ? [{ name: "EMPTY", value: 1 }]
-    : [  {
-    name: "TODO",
-    value: tasks.filter(
-      (task) => task.status === "TODO"
-    ).length,
-  },
-  {
-    name: "IN_PROGRESS",
-    value: tasks.filter(
-      (task) =>
-        task.status === "IN_PROGRESS"
-    ).length,
-  },
-  {
-    name: "DONE",
-    value: tasks.filter(
-      (task) => task.status === "DONE"
-    ).length,
-  },
-];
-
-const priorityData = [
-  {
-    name: "LOW",
-    value: tasks.filter(
-      (task) => task.priority === "LOW"
-    ).length,
-  },
-  {
-    name: "MEDIUM",
-    value: tasks.filter(
-      (task) => task.priority === "MEDIUM"
-    ).length,
-  },
-  {
-    name: "HIGH",
-    value: tasks.filter(
-      (task) => task.priority === "HIGH"
-    ).length,
-  },
-];
-
-const COLORS = [
-  "#3B82F6",
-  "#F59E0B",
-  "#10B981",
-];
-
-  const getDueStatus = (dueDate) => {
-
-  if (!dueDate) {
-    return {
-      text: "No Due Date",
-      color: "bg-gray-500",
-    };
-  }
-
-  const today = new Date();
-
-  const due = new Date(dueDate);
-
-  // REMOVE TIME FOR ACCURATE COMPARISON
-
-  today.setHours(0, 0, 0, 0);
-
-  due.setHours(0, 0, 0, 0);
-
-  // OVERDUE
-
-  if (due < today) {
-
-    return {
-      text: "Overdue",
-      color: "bg-red-500",
-    };
-  }
-
-  // TODAY
-
-  if (due.getTime() === today.getTime()) {
-
-    return {
-      text: "Due Today",
-      color: "bg-yellow-500",
-    };
-  }
-
-  // UPCOMING
-
-  return {
-    text: "Upcoming",
-    color: "bg-green-500",
-  };
-};
-
-  // FILTERED TASKS
-
-  const filteredTasks = tasks.filter((task) => {
-
-    const matchesSearch =
-      task.title.toLowerCase().includes(
-        searchTerm.toLowerCase()
-      );
-
-    const matchesStatus =
-      statusFilter === "ALL" ||
-      task.status === statusFilter;
-
-    const matchesPriority =
-      priorityFilter === "ALL" ||
-      task.priority === priorityFilter;
-
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesPriority
-    );
-  });
-
-  const todoTasks = filteredTasks.filter(
-  (task) => task.status === "TODO"
-);
-
-const inProgressTasks = filteredTasks.filter(
-  (task) => task.status === "IN_PROGRESS"
-);
-
-const doneTasks = filteredTasks.filter(
-  (task) => task.status === "DONE"
-);
-
-const handleDragEnd = async (result) => {
-
-  if (!result.destination) return;
-
-  const taskId = result.draggableId;
-
-  const newStatus =
-    result.destination.droppableId;
-
-  const taskToUpdate = tasks.find(
-    (task) => task.id.toString() === taskId
+ const handleDeleteTask = async (id) => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this task?"
   );
 
-  if (!taskToUpdate) return;
+  if (!confirmed) return;
 
   try {
-
-    const updatedTask = {
-      ...taskToUpdate,
-      status: newStatus,
-    };
-
-    await updateTask(
-      taskToUpdate.id,
-      updatedTask
-    );
-
-    fetchTasks();
-
-    toast.success("Task moved successfully");
-
+    await deleteTask(id);
+    loadTasks();
   } catch (error) {
-
-    console.log(error);
-
-    toast.error("Failed to move task");
+    console.error(error);
   }
 };
 
-  return (
+  const handleToggleComplete = async (task) => {
+    try {
+      await updateTask(task.id, {
+        ...task,
+        status:
+          task.status === "COMPLETED"
+            ? "PENDING"
+            : "COMPLETED",
+      });
 
-    <motion.div
-     initial={{ opacity: 0 }}
-  animate={{ opacity: 1 }}
-  transition={{ duration: 0.5 }}
-      className={`min-h-screen p-6 transition-all duration-300 ${
-        darkMode
-          ? "bg-gray-900 text-white"
-          : "bg-gray-100 text-black"
-      }`}
-    >
-
-      {/* HEADER */}
-
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">
-          TaskForge Dashboard
-        </h1>
-
-        <div className="flex gap-4">
-          <div
-  className={`
-    flex
-    rounded-lg
-    overflow-hidden
-    border
-    ${
-      darkMode
-        ? "border-gray-600"
-        : "border-gray-300"
+      loadTasks();
+    } catch (error) {
+      console.error(error);
     }
-  `}
->
+  };
 
-  <button
-    onClick={() => setViewMode("grid")}
+  const SkeletonCard = () => (
+    <div className="rounded-xl bg-white p-6 shadow-sm animate-pulse border border-slate-100">
+      <div className="h-4 bg-slate-200 rounded w-1/3 mb-4"></div>
+      <div className="h-8 bg-slate-200 rounded w-1/4"></div>
+    </div>
+  );
+
+  const TaskCard = ({ task }) => (
+  <div
     className={`
-      px-4
-      py-2
+      group
+      rounded-2xl
+      border
+      p-5
+      shadow-sm
       transition-all
+      duration-200
+      hover:-translate-y-1
+      hover:shadow-md
       ${
-        viewMode === "grid"
-          ? "bg-blue-500 text-white"
-          : darkMode
-          ? "bg-gray-800 text-gray-300"
-          : "bg-white text-black"
+        task.status === "COMPLETED"
+          ? "border-slate-200 bg-slate-50"
+          : "border-slate-200 bg-white hover:border-slate-300"
       }
     `}
   >
-    📦
-  </button>
+    <div className="flex items-start gap-4">
 
-  <button
-    onClick={() => setViewMode("kanban")}
-    className={`
-      px-4
-      py-2
-      transition-all
-      ${
-        viewMode === "kanban"
-          ? "bg-blue-500 text-white"
-          : darkMode
-          ? "bg-gray-800 text-gray-300"
-          : "bg-white text-black"
-      }
-    `}
-  >
-    📋
-  </button>
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        aria-label={
+  task.status === "COMPLETED"
+    ? `Mark ${task.title} as pending`
+    : `Mark ${task.title} as completed`
+}
+        checked={task.status === "COMPLETED"}
+        onChange={() => handleToggleComplete(task)}
+        className="
+  mt-1
+  h-5
+  w-5
+  cursor-pointer
+  rounded
+  border-slate-300
+  accent-blue-600
+  focus:ring-2
+  focus:ring-blue-500/30
+  focus:ring-offset-1
+"
+      />
 
-</div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              darkMode
-                ? "bg-yellow-400 text-black"
-                : "bg-gray-800 text-white"
-            }`}
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+
+        {/* Title */}
+        <h3
+          className={`
+            text-base
+            font-semibold
+            leading-6
+            transition-all
+            ${
+              task.status === "COMPLETED"
+                ? "text-slate-400 line-through"
+                : "text-slate-900"
+            }
+          `}
+        >
+          {task.title}
+        </h3>
+
+        {/* Description */}
+        {task.description && (
+          <p
+            className={`
+              mt-2
+              text-sm
+              leading-6
+              ${
+                task.status === "COMPLETED"
+                  ? "text-slate-400"
+                  : "text-slate-600"
+              }
+            `}
           >
-      {darkMode ? "🌞" : "🌛"}          </button>
+            {task.description}
+          </p>
+        )}
 
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+        {/* Metadata */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+
+          {/* Priority */}
+          <span
+            className={`
+              inline-flex
+              items-center
+              rounded-full
+              px-3
+              py-1
+              text-xs
+              font-semibold
+              ${
+                task.priority === "HIGH"
+                  ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                  : task.priority === "MEDIUM"
+                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+              }
+            `}
           >
-            Logout
-          </button>
+            {task.priority.charAt(0) +
+              task.priority.slice(1).toLowerCase()} Priority
+          </span>
 
+          {/* Due Date */}
+          {task.dueDate && (
+            <span
+              className={`
+                inline-flex
+                items-center
+                rounded-full
+                px-3
+                py-1
+                text-xs
+                font-medium
+                ${
+                  isOverdue(task.dueDate)
+                    ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                    : "bg-slate-100 text-slate-600"
+                }
+              `}
+            >
+              {isOverdue(task.dueDate)
+                ? "Overdue • "
+                : "Due • "}
+
+              {new Date(task.dueDate).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+          )}
+
+          {/* Completed Badge */}
+          {task.status === "COMPLETED" && (
+            <span
+              className="
+                inline-flex
+                items-center
+                rounded-full
+                bg-green-50
+                px-3
+                py-1
+                text-xs
+                font-medium
+                text-green-700
+                ring-1
+                ring-green-200
+              "
+            >
+              Completed
+            </span>
+          )}
         </div>
       </div>
 
-      {/* TASK FORM */}
-
-      <div
-        className={`p-6 rounded-2xl shadow-md mb-8 ${
-          darkMode
-            ? "bg-gray-800 text-white"
-            : "bg-white text-black"
-        }`}
+      {/* Delete */}
+      <button
+  aria-label={`Delete ${task.title}`}
+  title="Delete task"
+  onClick={() => handleDeleteTask(task.id)}
+        className="
+          rounded-xl
+          p-2
+          text-slate-400
+          transition-all
+          duration-200
+          hover:bg-red-50
+          hover:text-red-600
+          active:scale-95
+          focus:outline-none
+          focus:ring-2
+          focus:ring-red-500/20
+        "
       >
-
-        <h2 className="text-2xl font-semibold mb-4">
-          {editingTaskId ? "Update Task" : "Create New Task"}
-        </h2>
-
-        <form
-          onSubmit={handleCreateTask}
-          className="space-y-4"
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-
-          <input
-            type="text"
-            name="title"
-            placeholder="Task Title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className={`w-full border p-3 rounded-lg ${
-              darkMode
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
           />
+        </svg>
+      </button>
 
-          <textarea
-            name="description"
-            placeholder="Task Description"
-            value={formData.description}
-            onChange={handleChange}
-            rows="4"
-            className={`w-full border p-3 rounded-lg ${
-              darkMode
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
-          />
+    </div>
+  </div>
+);
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ const EmptyState = ({
+  title,
+  description,
+  icon,
+  action,
+}) => (
+  <div className="py-12 text-center">
 
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className={`border p-3 rounded-lg ${
-                darkMode
-                  ? "bg-gray-700 text-white border-gray-600"
-                  : "bg-white text-black border-gray-300"
-              }`}
-            >
-              <option value="TODO">TODO</option>
-              <option value="IN_PROGRESS">IN PROGRESS</option>
-              <option value="DONE">DONE</option>
-            </select>
+    <div className="flex justify-center">
+      {icon}
+    </div>
 
-            <select
-              name="priority"
-              value={formData.priority}
-              onChange={handleChange}
-              className={`border p-3 rounded-lg ${
-                darkMode
-                  ? "bg-gray-700 text-white border-gray-600"
-                  : "bg-white text-black border-gray-300"
-              }`}
-            >
-              <option value="LOW">LOW</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="HIGH">HIGH</option>
-            </select>
+    <h3 className="mt-5 text-lg font-semibold text-slate-900">
+      {title}
+    </h3>
 
-            <input
-              type="datetime-local"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              className={`border p-3 rounded-lg ${
-                darkMode
-                  ? "bg-gray-700 text-white border-gray-600"
-                  : "bg-white text-black border-gray-300"
-              }`}
-            />
+    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+      {description}
+    </p>
 
-          </div>
-
-          <button
-            type="submit"
-className="
-  bg-blue-600
-  hover:bg-blue-700
-  text-white
-  px-6
-  py-3
-  rounded-lg
-  transform
-  hover:scale-105
-  transition-all
-  duration-300
-"          >
-            {editingTaskId ? "Update Task" : "Create Task"}
-          </button>
-
-        </form>
+    {action && (
+      <div className="mt-6">
+        {action}
       </div>
+    )}
 
-      {/* STATS */}
+  </div>
+);
+useEffect(() => {
+  const handleEscape = (e) => {
+    if (e.key === "Escape") {
+      setShowModal(false);
+    }
+  };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  if (showModal) {
+    window.addEventListener("keydown", handleEscape);
+  }
 
-        <StatCard
-          darkMode={darkMode}
-          title="Total Tasks"
-          value={totalTasks}
-          color="text-blue-500"
-        />
+  return () => {
+    window.removeEventListener("keydown", handleEscape);
+  };
+}, [showModal]);
+useEffect(() => {
+  document.body.style.overflow = showModal ? "hidden" : "";
 
-        <StatCard
-          darkMode={darkMode}
-          title="Completed"
-          value={completedTasks}
-          color="text-green-500"
-        />
+  return () => {
+    document.body.style.overflow = "";
+  };
+}, [showModal]);
 
-        <StatCard
-          darkMode={darkMode}
-          title="Pending"
-          value={pendingTasks}
-          color="text-yellow-500"
-        />
-
-        <StatCard
-          darkMode={darkMode}
-          title="High Priority"
-          value={highPriorityTasks}
-          color="text-red-500"
-        />
-
-      </div>
-              {/* PROGRESS BAR */}
+  return (
+<div className="flex min-h-screen bg-slate-50 text-slate-900">
+      {/* Sidebar */}
 <div
   className={`
-    rounded-2xl
-    shadow-md
-    p-6
-    mb-8
+    fixed inset-y-0 left-0 z-50
+    w-64
+    bg-gradient-to-b from-slate-900 to-slate-800
+    text-white
+    transition-transform duration-300 ease-in-out
     ${
-      darkMode
-        ? "bg-gray-800 text-white"
-        : "bg-white text-black"
+      sidebarOpen
+        ? "translate-x-0"
+        : "-translate-x-full"
     }
   `}
 >
+        <div className="flex h-full flex-col">
 
-          <div className="flex justify-between mb-3">
+          {/* Logo */}
+          <div className="border-b border-slate-800 px-6 py-6">
 
-<h2 className={`text-xl font-bold`}>
-              Task Progress
-            </h2>
+  <div className="flex items-center gap-3">
 
-            <span className="font-bold text-blue-600">
-              {completionPercentage}%
+    <div
+      className="
+        flex h-10 w-10 items-center justify-center
+        rounded-xl
+        bg-blue-600
+        text-lg font-bold
+      "
+    >
+      T
+    </div>
+
+    <div>
+      <h1 className="text-lg font-semibold tracking-tight">
+        TaskForge
+      </h1>
+
+      <p className="text-xs text-slate-400">
+        Personal Workspace
+      </p>
+    </div>
+
+  </div>
+
+</div>
+
+          {/* Navigation */}
+          <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+            <div className="px-4 pb-2 pt-1 text-xs font-medium uppercase tracking-wider text-slate-500">
+  Workspace
+</div>
+
+            <Link
+              to="/dashboard"
+              onClick={() => setSidebarOpen(false)}
+className="
+  flex items-center gap-3
+  rounded-xl
+  bg-slate-800
+  px-4 py-3
+  text-sm font-medium text-white
+  transition-all duration-200
+  hover:bg-slate-800
+"            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9m-9 16l4-4m0 0l4 4m-4-4V5" />
+              </svg>
+              Dashboard
+            </Link>
+
+            
+
+            <div className="my-6 border-t border-slate-700"></div>
+
+            <div className="px-4 pb-2 pt-6 text-xs font-medium uppercase tracking-wider text-slate-500">
+  Account
+</div>
+
+            
+
+            <Link
+              to="/profile"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 rounded-xl
+px-4 py-3
+text-slate-300
+transition-all duration-200
+hover:bg-slate-800
+hover:text-white"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Profile
+            </Link>
+
+            
+          </nav>
+<button
+  onClick={handleLogout}
+className="
+  mx-4 mb-4
+  flex w-auto items-center gap-3
+  rounded-xl
+  px-4 py-3
+  text-sm font-medium text-slate-300
+  transition-all duration-200
+  hover:bg-red-500/10
+  hover:text-red-400
+">
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1"
+    />
+  </svg>
+
+  Logout
+</button>
+          {/* User Profile Card */}
+          <div className="border-t border-slate-700 p-4">
+<div
+  className="
+    rounded-2xl
+    border border-slate-800
+    bg-slate-800
+    p-4
+  "
+>              <div className="flex items-center gap-3 mb-3">
+<div
+  className="
+    flex h-11 w-11 items-center justify-center
+    rounded-xl
+    bg-blue-600
+    text-sm font-semibold
+    text-white
+    flex-shrink-0
+  "
+>                 
+ {userName
+  .split(" ")
+  .map((word) => word[0])
+  .join("")
+  .slice(0, 2)
+  .toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{userName}</p>
+                  <p className="text-xs text-slate-400 truncate">{userEmail}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {sidebarOpen && (
+  <div
+    className="fixed inset-0 bg-black/40 z-40 "
+    onClick={() => setSidebarOpen(false)}
+  />
+)}
+
+
+      {/* Main Content */}
+      <div
+  className={`
+    flex min-w-0 flex-1 flex-col
+    transition-all duration-300
+    ${sidebarOpen ? "lg:ml-64" : "lg:ml-0"}
+  `}
+>
+       
+        {/* Top Header */}
+<div className="border-b border-slate-200 bg-white px-5 py-5 sm:px-6 lg:px-8 xl:px-10">
+  <div className="space-y-5">
+     <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            {getGreeting()}, {userName}
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {getCurrentDate()}
+          </p>
+
+    {/* Top Row */}
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+
+      {/* Left */}
+      <div className="flex items-start gap-3">
+
+        {/* Sidebar Toggle */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="
+            rounded-xl
+            p-2.5
+            text-slate-600
+            transition-all
+            duration-200
+            hover:translate-x-1
+            transition-all duration-200
+            active:scale-95
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500/20
+          "
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+
+        {/* Greeting */}
+        <div>
+         
+
+          {/* Quick Stats */}
+          <div className="mt-3 flex flex-wrap gap-2">
+
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {totalTasks} Total
+            </span>
+
+            <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+              {completedTasks} Completed
+            </span>
+
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+              {pendingTasks} Pending
             </span>
 
           </div>
+        </div>
+      </div>
 
-          {/* BAR */}
+      {/* Right */}
+      <div className="flex flex-wrap items-center gap-3">
 
+        {/* Create Task */}
+        <button
+          onClick={() => setShowModal(true)}
+          className="
+            rounded-xl
+            bg-blue-600
+            px-5
+            py-2.5
+            text-sm
+            font-semibold
+            text-white
+            transition-all
+            duration-200
+            hover:-translate-y-0.5
+            hover:bg-blue-700
+            hover:shadow-md
+            active:scale-95
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500/20
+          "
+        >
+          + New Task
+        </button>
+
+       
+
+        {/* Avatar */}
         <div className="
-          w-full
-          bg-gray-200
-          dark:bg-gray-700
+          flex
+          h-11
+          w-11
+          items-center
+          justify-center
           rounded-full
-          h-5
-          overflow-hidden
+          bg-gradient-to-br
+          from-blue-500
+          to-blue-700
+          text-sm
+          font-semibold
+          text-white
+          shadow-sm
         ">
+          {userName
+  .split(" ")
+  .map((word) => word[0])
+  .join("")
+  .slice(0, 2)
+  .toUpperCase()}
+        </div>
 
+      </div>
+    </div>
+
+    {/* Bottom Row */}
+    <div className="relative max-w-xl">
+
+      <svg
+        className="absolute left-3 top-3 h-5 w-5 text-slate-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+
+      <input
+        type="text"
+        aria-label="Search tasks"
+        placeholder="Search tasks by title..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="
+          w-full
+          rounded-xl
+          border
+          border-slate-300
+          bg-white
+          py-3
+          pl-11
+          pr-4
+          text-sm
+          placeholder:text-slate-400
+          transition-all
+          duration-200
+          focus:border-blue-500
+          focus:outline-none
+          focus:ring-4
+          focus:ring-blue-500/10
+        "
+      />
+    </div>
+
+  </div>
+</div>
+
+        {/* Content Area */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-6 lg:px-8 xl:px-10 space-y-8">
+
+            {/* Statistics */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {loading ? (
+               <>
+  {[1, 2, 3, 4].map((item) => (
+    <SkeletonCard key={item} />
+  ))}
+</>
+              ) : (
+              <>
+  {/* Total Tasks */}
+  <div
+    className="
+      rounded-2xl
+      border
+      border-slate-200
+      bg-white
+      p-6
+      shadow-sm
+      transition-all
+      duration-200
+      hover:-translate-y-1
+      hover:shadow-md
+    "
+  >
+    <div className="flex items-start justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-slate-500">
+          Total Tasks
+        </p>
+
+        <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+          {totalTasks}
+        </p>
+
+        <p className="mt-2 text-xs text-slate-500">
+          All tasks in your workspace
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-blue-50 p-3">
+        <svg
+          className="h-6 w-6 text-blue-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"
+          />
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  {/* Completed Tasks */}
+  <div
+    className="
+      rounded-2xl
+      border
+      border-slate-200
+      bg-white
+      p-6
+      shadow-sm
+      transition-all
+      duration-200
+      hover:-translate-y-1
+      hover:shadow-md
+    "
+  >
+    <div className="flex items-start justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-slate-500">
+          Completed
+        </p>
+
+        <p className="mt-3 text-3xl font-bold tracking-tight text-green-600">
+          {completedTasks}
+        </p>
+
+        <p className="mt-2 text-xs text-slate-500">
+          Successfully finished
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-green-50 p-3">
+        <svg
+          className="h-6 w-6 text-green-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  {/* Pending Tasks */}
+  <div
+    className="
+      rounded-2xl
+      border
+      border-slate-200
+      bg-white
+      p-6
+      shadow-sm
+      transition-all
+      duration-200
+      hover:-translate-y-1
+      hover:shadow-md
+    "
+  >
+    <div className="flex items-start justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-slate-500">
+          Pending
+        </p>
+
+        <p className="mt-3 text-3xl font-bold tracking-tight text-amber-600">
+          {pendingTasks}
+        </p>
+
+        <p className="mt-2 text-xs text-slate-500">
+          Require attention
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-amber-50 p-3">
+        <svg
+          className="h-6 w-6 text-amber-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  {/* Productivity */}
+  <div
+    className="
+      rounded-2xl
+      border
+      border-slate-200
+      bg-white
+      p-6
+      shadow-sm
+      transition-all
+      duration-200
+      hover:-translate-y-1
+      hover:shadow-md
+    "
+  >
+    <div>
+
+      <div className="flex items-center justify-between">
+
+        <div>
+          <p className="text-sm font-medium text-slate-500">
+            Productivity
+          </p>
+
+          <p className="mt-3 text-3xl font-bold tracking-tight text-blue-600">
+            {completionPercentage}%
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-blue-50 p-3">
+          <svg
+            className="h-6 w-6 text-blue-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 17v-6m4 6V7m4 10V4"
+            />
+          </svg>
+        </div>
+
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+          <span>Completion Rate</span>
+          <span>{completionPercentage}%</span>
+        </div>
+
+        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
           <div
             className="
-              bg-gradient-to-r
-              from-blue-500
-              to-cyan-400
-              h-5
+              h-full
               rounded-full
+              bg-blue-600
               transition-all
               duration-500
             "
             style={{
               width: `${completionPercentage}%`,
             }}
-          ></div>
-
-        </div>
-
-        <p className="
-          mt-3
-          text-sm
-          text-gray-600
-          dark:text-gray-300
-        ">
-          {completedTasks} of {totalTasks} tasks completed
-        </p>
-
-        </div>
-
-        {/* ANALYTICS */}
-
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-
-  {/* TASK STATUS CHART */}
-
-  <div
-    className={`
-      rounded-2xl
-      shadow-md
-      p-6
-      ${
-        darkMode
-          ? "bg-gray-800 text-white"
-          : "bg-white text-black"
-      }
-    `}
-  >
-
-    <h2 className="text-2xl font-bold mb-6">
-      Task Status Analytics
-    </h2>
-
-    <div className="h-80">
-
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-      >
-
-        <PieChart>
-
-          <Pie
-            data={statusData}
-            dataKey="value"
-            nameKey="name"
-            outerRadius={110}
-            label
-          >
-
-            {statusData.map(
-              (entry, index) => (
-
-                <Cell
-                  key={index}
-                  fill={
-                    COLORS[index % COLORS.length]
-                  }
-                />
-
-              )
-            )}
-
-          </Pie>
-
-          <Tooltip />
-
-        </PieChart>
-
-      </ResponsiveContainer>
-
-    </div>
-
-  </div>
-
-  {/* PRIORITY CHART */}
-
-  <div
-    className={`
-      rounded-2xl
-      shadow-md
-      p-6
-      ${
-        darkMode
-          ? "bg-gray-800 text-white"
-          : "bg-white text-black"
-      }
-    `}
-  >
-
-    <h2 className="text-2xl font-bold mb-6">
-      Priority Distribution
-    </h2>
-
-    <div className="h-80">
-
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-      >
-
-        <BarChart data={priorityData}>
-
-          <CartesianGrid strokeDasharray="3 3" />
-
-          <XAxis dataKey="name" />
-
-          <YAxis />
-
-          <Tooltip />
-
-          <Bar
-            dataKey="value"
-            fill="#3B82F6"
-            radius={[10, 10, 0, 0]}
           />
-
-        </BarChart>
-
-      </ResponsiveContainer>
-
-    </div>
-
-  </div>
-
-</div>
-
-      {/* FILTERS */}
-
-      <div
-        className={`p-4 rounded-2xl shadow-md mb-6 ${
-          darkMode
-            ? "bg-gray-800"
-            : "bg-white"
-        }`}
-      >
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`border p-3 rounded-lg ${
-              darkMode
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
-          />
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={`border p-3 rounded-lg ${
-              darkMode
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
-          >
-            <option value="ALL">All Status</option>
-            <option value="TODO">TODO</option>
-            <option value="IN_PROGRESS">IN PROGRESS</option>
-            <option value="DONE">DONE</option>
-          </select>
-
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className={`border p-3 rounded-lg ${
-              darkMode
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
-          >
-            <option value="ALL">All Priority</option>
-            <option value="LOW">LOW</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="HIGH">HIGH</option>
-          </select>
-
         </div>
       </div>
 
-      {/* TASK CARDS */}
-       {/* TASK DISPLAY */}
-
-{loading ? (
-
-  <div className="flex justify-center items-center mt-20">
-
+    </div>
+  </div>
+</>
+              )}
+            </div>
+{totalTasks === 0 && !loading && (
+  <div
+    className="
+      rounded-2xl
+      border border-dashed border-slate-300
+      bg-white
+      px-6 py-14
+      text-center
+      shadow-sm
+    "
+  >
     <div
       className="
-        h-16
-        w-16
-        border-4
-        border-blue-500
-        border-t-transparent
-        rounded-full
-        animate-spin
+        mx-auto
+        flex h-16 w-16 items-center justify-center
+        rounded-2xl
+        bg-blue-50
       "
-    ></div>
-
-  </div>
-
-) : viewMode === "grid" ? (
-
-  /* GRID VIEW */
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-    {filteredTasks.length === 0 ? (
-
-      <p>No tasks found</p>
-
-    ) : (
-
-      filteredTasks.map((task) => (
-
-        <TaskCard
-          key={task.id}
-          task={task}
-          darkMode={darkMode}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-          handleToggleComplete={handleToggleComplete}
-          getDueStatus={getDueStatus}
-        />
-
-      ))
-    )}
-
-  </div>
-
-) : (
-
-  /* KANBAN VIEW */
-
- /* DRAG & DROP KANBAN */
-
-<DragDropContext
-  onDragEnd={handleDragEnd}
->
-
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-    <KanbanColumn
-      id="TODO"
-      title="TODO"
-      tasks={todoTasks}
-      darkMode={darkMode}
-      color="bg-blue-500"
-      handleEdit={handleEdit}
-      handleDelete={handleDelete}
-      handleToggleComplete={handleToggleComplete}
-      getDueStatus={getDueStatus}
-    />
-
-    <KanbanColumn
-      id="IN_PROGRESS"
-      title="IN PROGRESS"
-      tasks={inProgressTasks}
-      darkMode={darkMode}
-      color="bg-yellow-500"
-      handleEdit={handleEdit}
-      handleDelete={handleDelete}
-      handleToggleComplete={handleToggleComplete}
-      getDueStatus={getDueStatus}
-    />
-
-    <KanbanColumn
-      id="DONE"
-      title="DONE"
-      tasks={doneTasks}
-      darkMode={darkMode}
-      color="bg-green-500"
-      handleEdit={handleEdit}
-      handleDelete={handleDelete}
-      handleToggleComplete={handleToggleComplete}
-      getDueStatus={getDueStatus}
-    />
-
-  </div>
-
-</DragDropContext>
-
-)}  
-
-    </motion.div>
-  );
-}
-
-// STAT CARD COMPONENT
-
-function StatCard({ darkMode, title, value, color }) {
-
-  return (
-
-    <div
-      className={`rounded-2xl shadow-md p-6 ${
-        darkMode
-          ? "bg-gray-800 text-white"
-          : "bg-white text-black"
-      }`}
     >
+      <svg
+        className="h-8 w-8 text-blue-600"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+        />
+      </svg>
+    </div>
 
-      <h2 className="text-sm text-gray-500 mb-2">
-        {title}
+    <h3 className="mt-6 text-xl font-semibold text-slate-900">
+      Welcome to TaskForge
+    </h3>
+
+    <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+      Start organizing your work by creating your first task.
+      Everything you add will appear here.
+    </p>
+
+    <button
+      onClick={() => setShowModal(true)}
+      className="
+        mt-8
+        rounded-xl
+        bg-blue-600
+        px-5 py-2.5
+        text-sm font-semibold
+        text-white
+        transition-all duration-200
+        hover:-translate-y-0.5
+        hover:bg-blue-700
+        hover:shadow-md
+        active:scale-95
+      "
+    >
+      + Create Your First Task
+    </button>
+  </div>
+)}
+            
+
+            {/* Task Sections */}
+            {loading ? (
+              <div className="space-y-8">
+                <div className="
+  rounded-xl
+  bg-white
+  border
+  border-slate-100
+  p-6
+  shadow-sm
+  hover:scale-[1.02]
+  hover:shadow-md
+  transition-all
+  duration-200
+">
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="rounded-lg bg-slate-50 p-4 animate-pulse">
+                        <div className="flex gap-4">
+                          <div className="h-5 w-5 bg-slate-200 rounded"></div>
+                          <div className="flex-1">
+                            <div className="h-4 bg-slate-200 rounded w-2/3 mb-3"></div>
+                            <div className="h-3 bg-slate-200 rounded w-full"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+
+                {/* Overdue Tasks */}
+                {overdueTasks.length > 0 && (
+<div
+  className="
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    shadow-sm
+    overflow-hidden
+  "
+>                    <div className="border-b border-slate-100 px-6 py-5">
+  <div className="flex items-center justify-between">
+
+    <div className="flex items-center gap-3">
+
+      <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
+
+      <h2 className="text-lg font-semibold text-slate-900">
+        Overdue Tasks
       </h2>
 
-      <p className={`text-4xl font-bold ${color}`}>
-        {value}
-      </p>
+    </div>
+
+    <span
+      className="
+        rounded-full
+        bg-red-50
+        px-3
+        py-1
+        text-sm
+        font-medium
+        text-red-700
+      "
+    >
+      {overdueFilteredTasks.length}
+    </span>
+
+  </div>
+</div>
+<div className="px-6 py-5">                   
+     {overdueFilteredTasks.length === 0 ? (
+                        <EmptyState
+  title="You're all caught up"
+  description="Nothing is overdue right now. Keep up the great momentum."
+  icon={
+    <div className="rounded-2xl bg-red-50 p-4">
+      <svg
+        className="h-10 w-10 text-red-500"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+    </div>
+  }
+/>
+                      ) : (
+                        <div className="space-y-4">
+                          {overdueFilteredTasks.map((task) => (
+                            <TaskCard key={task.id} task={task} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Tasks */}
+<div
+  className="
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    shadow-sm
+    overflow-hidden
+  "
+>                  <div className="border-b border-slate-100 px-6 py-5">
+  <div className="flex items-center justify-between">
+
+    <div className="flex items-center gap-3">
+
+      <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+
+      <h2 className="text-lg font-semibold text-slate-900">
+        Active Tasks
+      </h2>
 
     </div>
-  );
-}
-function TaskCard({
-  task,
-  darkMode,
-  handleEdit,
-  handleDelete,
-  handleToggleComplete,
-  getDueStatus,
-}) {
 
-  return (
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.3 }}
-      className={`
-        rounded-2xl
-        shadow-md
-        p-5
-        hover:shadow-2xl
-        transition-all
-        duration-300
-        ${
-          darkMode
-            ? "bg-gray-800 text-white"
-            : "bg-white text-black"
-        }
-      `}
+    <span
+      className="
+        rounded-full
+        bg-blue-50
+        px-3
+        py-1
+        text-sm
+        font-medium
+        text-blue-700
+      "
     >
+      {pendingFilteredTasks.length}
+    </span>
 
-      <div className="flex justify-between items-center mb-3">
-
-        <h2
-          className={`
-            text-xl
-            font-bold
-            ${
-              task.status === "DONE"
-                ? "line-through opacity-60"
-                : ""
-            }
-          `}
-        >
-          {task.title}
-        </h2>
-
-        <span
-          className={`px-3 py-1 rounded-full text-white text-sm ${
-            task.priority === "HIGH"
-              ? "bg-red-500"
-              : task.priority === "MEDIUM"
-              ? "bg-yellow-500"
-              : "bg-green-500"
-          }`}
-        >
-          {task.priority}
-        </span>
-
-      </div>
-
-      <p className="mb-4 opacity-80">
-        {task.description}
-      </p>
-
-      <div className="space-y-2 text-sm">
-
-        <p>
-          <strong>Status:</strong> {task.status}
-        </p>
-
-        <p>
-          <strong>Due:</strong>{" "}
-          {task.dueDate
-            ? new Date(task.dueDate).toLocaleString()
-            : "No date"}
-        </p>
-
-        <span
-          className={`
-            px-3
-            py-1
-            rounded-full
-            text-white
-            text-xs
-            font-semibold
-            ${getDueStatus(task.dueDate).color}
-          `}
-        >
-          {getDueStatus(task.dueDate).text}
-        </span>
-
-      </div>
-
-      <div className="flex flex-wrap gap-3 mt-4">
-
-        <button
-          onClick={() =>
-            handleToggleComplete(task)
-          }
-          className={`
-            px-4
-            py-2
-            rounded-lg
-            text-white
-            ${
-              task.status === "DONE"
-                ? "bg-gray-500"
-                : "bg-green-500"
-            }
-          `}
-        >
-          {task.status === "DONE"
-            ? "↩"
-            : "✅"}
-        </button>
-
-        <button
-          onClick={() => handleEdit(task)}
-          className="
-            bg-yellow-500
-            hover:bg-yellow-600
-            text-white
-            px-4
-            py-2
-            rounded-lg
-          "
-        >
-          ✏
-        </button>
-
-        <button
-          onClick={() =>
-            handleDelete(task.id)
-          }
-          className="
-            bg-red-500
-            hover:bg-red-600
-            text-white
-            px-4
-            py-2
-            rounded-lg
-          "
-        >
-          🗑
-        </button>
-
-      </div>
-
-    </motion.div>
-  );
-}
-function KanbanColumn({
-  id,
-  title,
-  tasks,
-  darkMode,
-  color,
-  handleEdit,
-  handleDelete,
-  handleToggleComplete,
-  getDueStatus,
-}) {
-
-  return (
-
-    <div
-      className={`
-        rounded-2xl
-        p-4
-        min-h-[500px]
-        ${
-          darkMode
-            ? "bg-gray-800"
-            : "bg-gray-200"
-        }
-      `}
+  </div>
+</div>
+                  <div className="p-5 sm:p-6">
+                    {pendingFilteredTasks.length === 0 ? (
+                      <EmptyState
+  title="No active tasks"
+  description="You currently have nothing in progress. Take a break or create something new."
+  icon={
+    <div className="rounded-2xl bg-blue-50 p-4">
+      <svg
+        className="h-10 w-10 text-blue-500"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M13 10V3L4 14h7v7l9-11h-7"
+        />
+      </svg>
+    </div>
+  }
+  action={
+    <button
+      onClick={() => setShowModal(true)}
+      className="
+        rounded-xl
+        bg-blue-600
+        px-4 py-2
+        text-sm font-medium
+        text-white
+        transition-all duration-200
+        hover:bg-blue-700
+        active:scale-95
+      "
     >
+      Create Task
+    </button>
+  }
+/>
+                    ) : (
+<div className="space-y-4">
+                          {pendingFilteredTasks.map((task) => (
+                          <TaskCard key={task.id} task={task} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-      <div className="flex items-center gap-3 mb-6">
+                {/* Completed Tasks */}
+<div
+  className="
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    shadow-sm
+    overflow-hidden
+  "
+>                 <div className="border-b border-slate-100 px-6 py-5">
+  <div className="flex items-center justify-between">
 
-        <div
-          className={`w-4 h-4 rounded-full ${color}`}
-        ></div>
+    <div className="flex items-center gap-3">
 
-        <h2 className="text-xl font-bold">
-          {title}
-        </h2>
+      <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
 
-        <span
-          className="
-            bg-black/20
-            px-2
-            py-1
-            rounded-lg
-            text-sm
-          "
-        >
-          {tasks.length}
-        </span>
+      <h2 className="text-lg font-semibold text-slate-900">
+        Completed Tasks
+      </h2>
+
+    </div>
+
+    <span
+      className="
+        rounded-full
+        bg-green-50
+        px-3
+        py-1
+        text-sm
+        font-medium
+        text-green-700
+      "
+    >
+      {completedFilteredTasks.length}
+    </span>
+
+  </div>
+</div>
+                  <div className="p-5 sm:p-6">
+                    {completedFilteredTasks.length === 0 ? (
+                      <EmptyState
+                        title="No completed tasks"
+                        description="You haven't completed any tasks yet. Keep going!"
+                        icon={
+                          <div className="rounded-2xl bg-green-50 p-4">
+                            <svg
+                              className="h-10 w-10 text-green-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </div>
+                        }
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        {completedFilteredTasks.map((task) => (
+                          <TaskCard key={task.id} task={task} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
 
       </div>
 
-     <Droppable droppableId={id}>
-
-  {(provided) => (
-
-    <div
-      {...provided.droppableProps}
-      ref={provided.innerRef}
-      className="space-y-4 min-h-[400px]"
-    >
-
-      {tasks.map((task, index) => (
-
-        <Draggable
-          key={task.id.toString()}
-          draggableId={task.id.toString()}
-          index={index}
-        >
-
-          {(provided) => (
-
-            <div
-              ref={provided.innerRef}
-              {...provided.draggableProps}
-              {...provided.dragHandleProps}
-            >
-
-              <TaskCard
-                task={task}
-                darkMode={darkMode}
-                handleEdit={handleEdit}
-                handleDelete={handleDelete}
-                handleToggleComplete={handleToggleComplete}
-                getDueStatus={getDueStatus}
-              />
-
+      {/* Create Task Modal */}
+      {showModal && (
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="create-task-title"
+  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+>          <div
+  className="
+    w-full
+    max-w-lg
+    rounded-2xl
+    bg-white
+    shadow-xl
+  "
+>
+            <div className="border-b border-slate-200 px-6 py-4">
+              <h2 id="create-task-title" className="text-xl font-bold text-slate-900">Create New Task</h2>
+              <p className="mt-1 text-sm text-slate-500">Add a new task to your dashboard</p>
             </div>
 
-          )}
+            <form onSubmit={handleCreateTask} className="space-y-4 p-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Task Title
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  placeholder="Enter task title..."
+                  value={formData.title}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                  required
+                />
+              </div>
 
-        </Draggable>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  placeholder="Add task details..."
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                  rows="4"
+                />
+              </div>
 
-      ))}
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Priority
+                </label>
+                <select
+                  name="priority"
+                  value={formData.priority}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                >
+                  <option value="LOW">Low Priority</option>
+                  <option value="MEDIUM">Medium Priority</option>
+                  <option value="HIGH">High Priority</option>
+                </select>
+              </div>
 
-      {provided.placeholder}
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Due Date
+                </label>
+                <input
+                  type="datetime-local"
+                  name="dueDate"
+                  value={formData.dueDate}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
 
-    </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-white font-semibold transition-colors duration-200"
+                >
+                  Create Task
+                </button>
 
-  )}
-
-</Droppable>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 rounded-lg bg-slate-200 hover:bg-slate-300 px-4 py-2.5 text-slate-900 font-semibold transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

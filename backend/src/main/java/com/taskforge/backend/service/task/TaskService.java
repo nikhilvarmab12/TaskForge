@@ -11,7 +11,10 @@ import com.taskforge.backend.model.Task;
 import com.taskforge.backend.model.User;
 import com.taskforge.backend.repository.TaskRepository;
 import com.taskforge.backend.repository.UserRepository;
-
+import com.taskforge.backend.service.ActivityLogService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 @Service
 public class TaskService {
 
@@ -20,10 +23,11 @@ public class TaskService {
 
     @Autowired
     private UserRepository userRepository;
-
+    @Autowired
+    private ActivityLogService activityLogService;
     // CREATE TASK
     public Task createTask(TaskRequest request, String email) {
-
+    	
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
@@ -39,19 +43,33 @@ public class TaskService {
         task.setCreatedAt(LocalDateTime.now());
 
         task.setUser(user);
-
+        activityLogService.log(
+                user,
+                "TASK_CREATED"
+        );
         return taskRepository.save(task);
+        
     }
 
     // GET ALL TASKS
-    public List<Task> getUserTasks(String email) {
+    public Page<Task> getUserTasks(
+        String email,
+        int page,
+        int size
+) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() ->
+                    new RuntimeException("User not found"));
 
-        return taskRepository.findByUser(user);
-    }
+    Pageable pageable =
+            PageRequest.of(page, size);
+
+    return taskRepository.findByUser(
+            user,
+            pageable
+    );
+}
 
     // GET SINGLE TASK
     public Task getTaskById(Long taskId, String email) {
@@ -91,8 +109,12 @@ public class TaskService {
         task.setStatus(request.getStatus());
         task.setPriority(request.getPriority());
         task.setDueDate(request.getDueDate());
-
+        activityLogService.log(
+                user,
+                "TASK_UPDATED"
+        );
         return taskRepository.save(task);
+       
     }
 
     // DELETE TASK
@@ -109,7 +131,11 @@ public class TaskService {
         if (!task.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Unauthorized");
         }
-
+        activityLogService.log(
+                user,
+                "TASK_DELETED"
+        );
         taskRepository.delete(task);
+
     }
 }

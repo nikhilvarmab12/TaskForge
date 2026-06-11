@@ -1,0 +1,581 @@
+  return (
+    <>
+      <Sidebar darkMode={darkMode} navigate={navigate} handleLogout={handleLogout} />
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen ml-64 px-8 py-6 max-w-[1800px] transition-colors duration-300"
+      >
+        <div className="fixed inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-24 left-16 w-72 h-72 bg-slate-500/10 blur-3xl rounded-full" />
+          <div className="absolute bottom-24 right-16 w-72 h-72 bg-slate-500/10 blur-3xl rounded-full" />
+        </div>
+
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+                Productivity hub
+              </p>
+              <div className="space-y-2">
+                <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                  {greeting}, welcome back.
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  You have {pendingTasks} tasks pending and {completedTasks} completed this session.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 justify-end">
+              <button
+                onClick={openTaskModal}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800"
+              >
+                <Plus size={16} />
+                New Task
+              </button>
+
+              <div className="inline-flex rounded-2xl border border-slate-200 bg-white/90 dark:border-slate-700 dark:bg-slate-950/80 shadow-sm">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`inline-flex items-center gap-2 rounded-l-2xl px-4 py-3 text-sm font-medium transition ${
+                    viewMode === "grid"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <LayoutGrid size={16} />
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode("kanban")}
+                  className={`inline-flex items-center gap-2 rounded-r-2xl px-4 py-3 text-sm font-medium transition ${
+                    viewMode === "kanban"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <Columns size={16} />
+                  Kanban
+                </button>
+              </div>
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  title="Settings"
+                  className="rounded-full border border-slate-200 bg-white/90 p-3 text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <Settings size={20} />
+                </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 top-14 w-64 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-950/95">
+                    <button
+                      title="Profile"
+                      onClick={() => navigate("/profile")}
+                      className="w-full px-4 py-4 text-left transition hover:bg-slate-100 dark:hover:bg-slate-900"
+                    >
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
+                        <User size={18} />
+                        <span>Profile</span>
+                      </div>
+                    </button>
+                    <button
+                      title="Activity"
+                      onClick={() => navigate("/activity")}
+                      className="w-full px-4 py-4 text-left transition hover:bg-slate-100 dark:hover:bg-slate-900"
+                    >
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
+                        <Activity size={18} />
+                        <span>Activity</span>
+                      </div>
+                    </button>
+                    <div className="border-t border-slate-200/80 dark:border-slate-700" />
+                    <button
+                      title="Dark Mode"
+                      onClick={() => setDarkMode(!darkMode)}
+                      className="w-full px-4 py-4 text-left transition hover:bg-slate-100 dark:hover:bg-slate-900"
+                    >
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
+                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
+                      </div>
+                    </button>
+                    <div className="border-t border-slate-200/80 dark:border-slate-700" />
+                    <button
+                      title="Logout"
+                      onClick={handleLogout}
+                      className="w-full px-4 py-4 text-left text-red-500 transition hover:bg-red-500/10"
+                    >
+                      <div className="flex items-center gap-3">
+                        <LogOut size={18} />
+                        <span>Logout</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard darkMode={darkMode} title="Total Tasks" value={totalTasks} color="text-slate-900 dark:text-slate-100" />
+            <StatCard darkMode={darkMode} title="Completed" value={completedTasks} color="text-emerald-500" />
+            <StatCard darkMode={darkMode} title="Pending" value={pendingTasks} color="text-amber-500" />
+            <StatCard darkMode={darkMode} title="Due Today" value={todayTasks} color="text-blue-500" />
+          </div>
+
+          <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid gap-4 md:grid-cols-3 flex-1">
+                <input
+                  type="text"
+                  placeholder="Search tasks"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="TODO">TODO</option>
+                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="DONE">DONE</option>
+                </select>
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                >
+                  <option value="ALL">All Priority</option>
+                  <option value="LOW">LOW</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HIGH">HIGH</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Layout</span>
+                <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={`inline-flex items-center gap-2 rounded-l-full px-4 py-2 text-sm font-medium transition ${
+                      viewMode === "grid"
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    <LayoutGrid size={16} />
+                    Grid
+                  </button>
+                  <button
+                    onClick={() => setViewMode("kanban")}
+                    className={`inline-flex items-center gap-2 rounded-r-full px-4 py-2 text-sm font-medium transition ${
+                      viewMode === "kanban"
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    <Columns size={16} />
+                    Kanban
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <QuickActions navigate={navigate} darkMode={darkMode} onNewTask={openTaskModal} />
+
+          <div className="space-y-6">
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-300 border-t-transparent dark:border-slate-600" />
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid gap-6 lg:grid-cols-3">
+                {filteredTasks.length === 0 ? (
+                  <div className="col-span-full rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-12 text-center dark:border-slate-700 dark:bg-slate-900/70">
+                    <p className="text-3xl font-semibold text-slate-900 dark:text-slate-100">No tasks found</p>
+                    <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                      Use the filter above or add a new task to populate your workspace.
+                    </p>
+                  </div>
+                ) : (
+                  filteredTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      darkMode={darkMode}
+                      handleEdit={handleEdit}
+                      handleDelete={handleDelete}
+                      handleToggleComplete={handleToggleComplete}
+                      getDueStatus={getDueStatus}
+                    />
+                  ))
+                )}
+              </div>
+            ) : (
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <div className="grid gap-6 xl:grid-cols-3">
+                  <KanbanColumn
+                    id="TODO"
+                    title="To Do"
+                    tasks={todoTasks}
+                    darkMode={darkMode}
+                    color="bg-blue-500"
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
+                    handleToggleComplete={handleToggleComplete}
+                    getDueStatus={getDueStatus}
+                  />
+                  <KanbanColumn
+                    id="IN_PROGRESS"
+                    title="In Progress"
+                    tasks={inProgressTasks}
+                    darkMode={darkMode}
+                    color="bg-amber-500"
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
+                    handleToggleComplete={handleToggleComplete}
+                    getDueStatus={getDueStatus}
+                  />
+                  <KanbanColumn
+                    id="DONE"
+                    title="Done"
+                    tasks={doneTasks}
+                    darkMode={darkMode}
+                    color="bg-emerald-500"
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
+                    handleToggleComplete={handleToggleComplete}
+                    getDueStatus={getDueStatus}
+                  />
+                </div>
+              </DragDropContext>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              Page {page + 1} of {totalPages}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(page - 1)}
+                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-800"
+              >
+                Previous
+              </button>
+              <button
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage(page + 1)}
+                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-800"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
+            <div className="space-y-6">
+              <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/90">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Tasks</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Manage work from the list or switch into Kanban.</p>
+                  </div>
+                  <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      className={`inline-flex items-center gap-2 rounded-l-full px-4 py-2 text-sm font-medium transition ${
+                        viewMode === "grid"
+                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                          : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      <LayoutGrid size={16} />
+                      Grid
+                    </button>
+                    <button
+                      onClick={() => setViewMode("kanban")}
+                      className={`inline-flex items-center gap-2 rounded-r-full px-4 py-2 text-sm font-medium transition ${
+                        viewMode === "kanban"
+                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                          : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      <Columns size={16} />
+                      Kanban
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  {loading ? (
+                    <div className="flex justify-center py-20">
+                      <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-300 border-t-transparent dark:border-slate-600" />
+                    </div>
+                  ) : viewMode === "grid" ? (
+                    <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-2">
+                      {filteredTasks.length === 0 ? (
+                        <div className="col-span-full rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-12 text-center dark:border-slate-700 dark:bg-slate-900/70">
+                          <p className="text-3xl font-semibold text-slate-900 dark:text-slate-100">No tasks found</p>
+                          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Adjust filters or create a new task to get started.</p>
+                        </div>
+                      ) : (
+                        filteredTasks.map((task) => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            darkMode={darkMode}
+                            handleEdit={handleEdit}
+                            handleDelete={handleDelete}
+                            handleToggleComplete={handleToggleComplete}
+                            getDueStatus={getDueStatus}
+                          />
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <div className="grid gap-6 xl:grid-cols-3">
+                        <KanbanColumn
+                          id="TODO"
+                          title="To Do"
+                          tasks={todoTasks}
+                          darkMode={darkMode}
+                          color="bg-blue-500"
+                          handleEdit={handleEdit}
+                          handleDelete={handleDelete}
+                          handleToggleComplete={handleToggleComplete}
+                          getDueStatus={getDueStatus}
+                        />
+                        <KanbanColumn
+                          id="IN_PROGRESS"
+                          title="In Progress"
+                          tasks={inProgressTasks}
+                          darkMode={darkMode}
+                          color="bg-slate-500"
+                          handleEdit={handleEdit}
+                          handleDelete={handleDelete}
+                          handleToggleComplete={handleToggleComplete}
+                          getDueStatus={getDueStatus}
+                        />
+                        <KanbanColumn
+                          id="DONE"
+                          title="Done"
+                          tasks={doneTasks}
+                          darkMode={darkMode}
+                          color="bg-emerald-500"
+                          handleEdit={handleEdit}
+                          handleDelete={handleDelete}
+                          handleToggleComplete={handleToggleComplete}
+                          getDueStatus={getDueStatus}
+                        />
+                      </div>
+                    </DragDropContext>
+                  )}
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200/80 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                  <span>Page {page + 1} of {totalPages}</span>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      disabled={page === 0}
+                      onClick={() => setPage(page - 1)}
+                      className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-800"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={page + 1 >= totalPages}
+                      onClick={() => setPage(page + 1)}
+                      className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-800"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="space-y-6">
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                viewport={{ once: true }}
+                className="rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/90"
+              >
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Task status distribution</h2>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={90} innerRadius={40} paddingAngle={4}>
+                        {statusData.map((entry, index) => (
+                          <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: darkMode ? "#0f172a" : "#ffffff", borderRadius: 12, border: "none" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.section>
+
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/90"
+              >
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Priority breakdown</h2>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={priorityData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#334155" : "#e2e8f0"} />
+                      <XAxis dataKey="name" tick={{ fill: darkMode ? "#cbd5e1" : "#475569" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: darkMode ? "#cbd5e1" : "#475569" }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ backgroundColor: darkMode ? "#0f172a" : "#ffffff", borderRadius: 12, border: "none" }} />
+                      <Bar dataKey="value" fill="#3B82F6" radius={[12, 12, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.section>
+            </div>
+          </div>
+        </div>
+
+        {isTaskModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="w-full max-w-2xl rounded-[32px] border border-slate-200/80 bg-white p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-950"
+            >
+              <div className="flex items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-200/80 dark:border-slate-700">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Task Builder</p>
+                  <h2 className="text-3xl font-semibold text-slate-900 dark:text-slate-100">
+                    {editingTaskId ? "Update task" : "Create new task"}
+                  </h2>
+                </div>
+                <button
+                  onClick={closeTaskModal}
+                  className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  Close
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateTask} className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                    Title
+                    <input
+                      type="text"
+                      name="title"
+                      placeholder="Task title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      required
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                    />
+                  </label>
+
+                  <label className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                    Status
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                    >
+                      <option value="TODO">TODO</option>
+                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="DONE">DONE</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                  <label>Details</label>
+                  <textarea
+                    name="description"
+                    placeholder="Task description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows="4"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <label className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                    Priority
+                    <select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                    >
+                      <option value="LOW">LOW</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="HIGH">HIGH</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                    Due date
+                    <input
+                      type="datetime-local"
+                      name="dueDate"
+                      value={formData.dueDate}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={closeTaskModal}
+                    className="rounded-2xl border border-slate-300 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    {editingTaskId ? "Save changes" : "Create task"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </motion.div>
+    </>
+  );
+
+
+
+
+
+}
+
+// STAT CARD COMPONENT

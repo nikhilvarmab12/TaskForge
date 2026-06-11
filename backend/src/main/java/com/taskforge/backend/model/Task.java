@@ -2,6 +2,8 @@ package com.taskforge.backend.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -14,6 +16,7 @@ public class Task {
 
     private String title;
 
+    @Column(length = 1000)
     private String description;
 
     private String status;
@@ -24,12 +27,18 @@ public class Task {
 
     private LocalDateTime createdAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     public Task() {
+        this.createdAt = LocalDateTime.now();
+        this.status = "PENDING";
+        this.priority = "MEDIUM";
     }
+
+    // GETTERS & SETTERS
 
     public Long getId() {
         return id;
