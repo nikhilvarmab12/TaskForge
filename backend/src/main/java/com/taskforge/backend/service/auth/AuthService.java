@@ -190,7 +190,7 @@ public class AuthService {
                     .createToken(user);
 
     String resetLink =
-            "http://localhost:5173/reset-password?token="
+            "https://taskforge-backend-yjkj.onrender.com/reset-password?token="
                     + resetToken.getToken();
 
     emailService.sendPasswordResetEmail(

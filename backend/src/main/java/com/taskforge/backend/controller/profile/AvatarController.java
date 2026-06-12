@@ -32,7 +32,7 @@ public class AvatarController {
 
         return Map.of(
         	    "avatarUrl",
-        	    "http://localhost:8080/uploads/" + filename
+        	    "https://taskforge-backend-yjkj.onrender.com/uploads/" + filename
         	);
     }
 }
