@@ -12,18 +12,15 @@ import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
-
+import org.springframework.beans.factory.annotation.Value;
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY =
-            "mysecretkeymysecretkeymysecretkeymysecretkey";
+    @Value("${JWT_SECRET}")
+    private String SECRET_KEY;
 
     private Key getSignInKey() {
-
-        byte[] keyBytes = SECRET_KEY.getBytes();
-
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 
     public String generateToken(String email) {
