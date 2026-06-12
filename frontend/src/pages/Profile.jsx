@@ -197,7 +197,7 @@ const handleUpdate =
 
               src={
                 profile.avatarUrl
-                  ? `http://localhost:8080/uploads/${profile.avatarUrl}`
+                  ? `${import.meta.env.VITE_API_URL}/uploads/${profile.avatarUrl}`
                   : "https://ui-avatars.com/api/?name=" +
                     profile.name
               }
