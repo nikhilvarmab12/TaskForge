@@ -1,0 +1,15 @@
+
+services:
+  - type: web
+    name: taskforge-backend
+    runtime: java
+    rootDir: backend
+    buildCommand: chmod +x mvnw && ./mvnw clean package
+    startCommand: java -jar target/backend-0.0.1-SNAPSHOT.jar
+    plan: free
+
+  - type: static
+    name: taskforge-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
