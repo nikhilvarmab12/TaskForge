@@ -32,17 +32,19 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
+        .requestMatchers(
+                "/",
+                "/error",
+                "/api/auth/**",
+                "/uploads/**"
+        ).permitAll()
 
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/uploads/**"
-                              
-                        )
-                        .permitAll()
+        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**")
+        .permitAll()
 
-                        .anyRequest()
-                        .authenticated()
-                )
+        .anyRequest()
+        .authenticated()
+)
 
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -64,10 +66,9 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of("http://localhost:5173")
-        );
-
+        configuration.setAllowedOriginPatterns(
+        List.of("*")
+);
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
